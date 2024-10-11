@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout the code from the repository
+                echo "Checking out the code..."
                 git branch: 'main', url: 'https://github.com/Oussmane-D/projet_lead_jedha-bootcamp.git'
             }
         }
@@ -12,10 +12,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Verify Docker is available
-                    sh 'docker --version'
-
-                    // Build the Docker image using the Dockerfile
+                    echo "Building the Docker image..."
                     sh 'docker build -t ml-pipeline-image .'
                 }
             }
@@ -31,7 +28,8 @@ pipeline {
                     string(credentialsId: 'artifact-root', variable: 'ARTIFACT_ROOT')
                 ]) {
                     script {
-                        // Write environment variables to a temporary file
+                        // Log the content of env.list to check for issues
+                        echo "Creating the env.list file with environment variables..."
                         writeFile file: 'env.list', text: """
                         MLFLOW_TRACKING_URI=$MLFLOW_TRACKING_URI
                         AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
@@ -39,14 +37,15 @@ pipeline {
                         BACKEND_STORE_URI=$BACKEND_STORE_URI
                         ARTIFACT_ROOT=$ARTIFACT_ROOT
                         """
-                    }
+                        sh 'cat env.list'  // Display the content of the env.list file
 
-                    // Run a temporary Docker container and pass env variables securely via --env-file
-                    sh '''
-                    docker run --rm --env-file env.list \
-                    ml-pipeline-image \
-                    bash -c "pytest --maxfail=1 --disable-warnings"
-                    '''
+                        echo "Running tests inside Docker..."
+                        sh '''
+                        docker run --rm --env-file env.list \
+                        ml-pipeline-image \
+                        bash -c "pytest --maxfail=1 --disable-warnings"
+                        '''
+                    }
                 }
             }
         }
@@ -54,7 +53,7 @@ pipeline {
 
     post {
         always {
-            // Clean up workspace and remove dangling Docker images
+            echo "Cleaning up Docker system..."
             sh 'docker system prune -f'
         }
         success {
