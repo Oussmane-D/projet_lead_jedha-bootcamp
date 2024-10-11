@@ -5,7 +5,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Checkout the code from the repository
-                git branch: 'main', url: 'https://github.com/JedhaBootcamp/sample-ml-workflow.git'
+                git branch: 'main', url: 'https://github.com/Oussmane-D/projet_lead_jedha-bootcamp.git'
             }
         }
 
@@ -60,6 +60,41 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs for errors.'
+        }
+    }
+}
+
+
+pipeline {
+    agent any
+    environment {
+        MLFLOW_URL = 'https://mlflow.huggingface.co'   ousmane-d/mlflow-sserver-demo
+        MLFLOW_TRACKING_TOKEN = credentials('MLFLOW_TOKEN')  // Si vous utilisez un token d'accès sécurisé
+    }
+    stages {
+        stage('Test') {
+            steps {
+                sh 'pytest tests/'  // Exécution des tests
+            }
+        }
+        stage('Log Metrics to MLflow') {
+            steps {
+                script {
+                    // Lancer une expérimentation sur MLflow via l'API
+                    sh """
+                    curl -X POST ${MLFLOW_URL}/api/2.0/mlflow/runs/log-metric \
+                        -H 'Authorization: Bearer ${MLFLOW_TRACKING_TOKEN}' \
+                        -H 'Content-Type: application/json' \
+                        -d '{
+                            "run_id": "run_id_value",
+                            "key": "accuracy",
+                            "value": 0.95,
+                            "timestamp": $(date +%s),
+                            "step": 1
+                        }'
+                    """
+                }
+            }
         }
     }
 }
